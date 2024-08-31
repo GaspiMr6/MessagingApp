@@ -14,21 +14,19 @@ public class Server {
 			System.exit(-1);
 		}
 
-		Server server = new Server();
 		int port = Integer.parseInt(args[0]);
-		ServerSocket serverSocket;
+		port = 8080;
 		System.out.println("Listening to the port " + port);
 
-		try {
-			serverSocket = new ServerSocket(port, 50, InetAddress.getByName("0.0.0.0"));
-
+		try (ServerSocket serverSocket= new ServerSocket(port, 50, InetAddress.getByName("0.0.0.0"))){
 			System.out.println("Waiting for clients...");
 			Socket clientSocket = serverSocket.accept();
-			System.out.println("Serving a client " + clientSocket.getPort());
-			String clientData = server.ReadSocketData(clientSocket);
-			System.out.println("I've received " + clientData);
-			serverSocket.close();
+			System.out.println("Client connected " + clientSocket.getRemoteSocketAddress());
 
+			String clientData = ReadSocketData(clientSocket);
+			System.out.println("I've received " + clientData);
+
+			clientSocket.close();
 		} catch (IOException exception) {
 			System.out.println("IOException: " + exception.toString());
 		}
@@ -36,13 +34,11 @@ public class Server {
         System.out.println();
 	}
 
-	private String ReadSocketData(Socket socket) {
+	private static String ReadSocketData(Socket socket) {
 
-		try {
-			InputStream inputStream = socket.getInputStream();
-			DataInputStream dataInStream = new DataInputStream(inputStream);
-			String input = dataInStream.readUTF();
-			return input;
+		try (InputStream inputStream = socket.getInputStream();
+			 DataInputStream dataInStream = new DataInputStream(inputStream)){
+			return dataInStream.readUTF();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

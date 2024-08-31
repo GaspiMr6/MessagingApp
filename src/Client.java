@@ -1,6 +1,5 @@
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
@@ -14,19 +13,19 @@ public class Client {
         }
         String host = args[0];
         String port = args[1];
+        host = "192.168.1.10";
+        port = "8080";
         Client client = new Client();
-        try {
-            
+        
+        try (Socket clientSocket = new Socket(host, Integer.parseInt(port));
+             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));){
             System.out.print("Send some bytes to the server: ");
-            InputStreamReader inStreamReader = new InputStreamReader(System.in);
-            BufferedReader br = new BufferedReader(inStreamReader);
             String input = br.readLine();
-            
-            Socket clientSocket = new Socket(host, Integer.parseInt(port));
             client.WriteSocketData(clientSocket, input);
             System.out.println("Sending to the server: " + input);
 
-        } catch (NumberFormatException | IOException e) {
+        } catch (Exception e) {
+            System.out.println("Exception caught: " + e.getMessage() + "\nStackTrace: " + e.getStackTrace() + " " + e.getCause());
             e.printStackTrace();
         }
         System.out.println();
