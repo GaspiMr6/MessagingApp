@@ -15,8 +15,7 @@ public class Server {
 		}
 
 		int port = Integer.parseInt(args[0]);
-		port = 8080;
-		System.out.println("Listening to the port " + port);
+		System.out.println("Listening on port " + port);
 
 		try (ServerSocket serverSocket= new ServerSocket(port, 50, InetAddress.getByName("0.0.0.0"))){
 			System.out.println("Waiting for clients...");

@@ -8,13 +8,12 @@ public class Client {
     public static void main(String[] args) {
 
         if (args.length < 2) {
-            System.out.println("Error: You must specify the host addres and the port");
+            System.out.println("Error: You must specify the host address and the port");
             System.exit(-1);
         }
         String host = args[0];
         String port = args[1];
-        host = "192.168.1.10";
-        port = "8080";
+
         Client client = new Client();
         
         try (Socket clientSocket = new Socket(host, Integer.parseInt(port));
