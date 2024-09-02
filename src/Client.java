@@ -1,7 +1,5 @@
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.Socket;
 
 public class Client {
@@ -14,30 +12,25 @@ public class Client {
         String host = args[0];
         String port = args[1];
 
-        Client client = new Client();
-        
         try (Socket clientSocket = new Socket(host, Integer.parseInt(port));
              BufferedReader br = new BufferedReader(new InputStreamReader(System.in));){
-            System.out.print("Send some bytes to the server: ");
+
+            // Read input for Room Name
+            System.out.print("Specify the room name you want to join/create to talk with others: ");
             String input = br.readLine();
-            client.WriteSocketData(clientSocket, input);
-            System.out.println("Sending to the server: " + input);
+            // Send RoomName to server
+            SocketUtilities.WriteSocketData(clientSocket, input);
+            // Wait for a response from the server
+            String response = SocketUtilities.ReadSocketData(clientSocket);
+
+            System.out.println(response);
+
 
         } catch (Exception e) {
             System.out.println("Exception caught: " + e.getMessage() + "\nStackTrace: " + e.getStackTrace() + " " + e.getCause());
-            e.printStackTrace();
         }
-        System.out.println();
-    }
+        System.out.println("I exit");
 
-    private void WriteSocketData(Socket socket, String data) {
-        try {
-            OutputStream outStream = socket.getOutputStream();
-            DataOutputStream dataOutStream = new DataOutputStream(outStream);
-            dataOutStream.writeUTF(data);
-        } catch (Exception e) {
-            System.out.println("Error: " + e.toString());
-        }
     }
 
 }
