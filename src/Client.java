@@ -41,7 +41,7 @@ public class Client {
             String input;
             do {
                 input = br.readLine();
-                SocketUtilities.WriteSocketData(clientSocket, input);
+                SocketUtilities.WriteSocketData(clientSocket, nickname + ":" + input);
             } while (!input.equals("END"));
 
         } catch (Exception e) {

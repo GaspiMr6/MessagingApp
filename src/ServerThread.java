@@ -22,7 +22,7 @@ public class ServerThread extends Thread {
         String clientDataRoomName = SocketUtilities.ReadSocketData(clientSocket);
         // New client data
         ClientData myClientData = new ClientData(clientSocket.getRemoteSocketAddress(), clientSocket, clientNickname);
-        System.out.println("New client processed: " + clientNickname + " in room "+ clientDataRoomName + " with IP: " + clientSocket.getRemoteSocketAddress());
+        System.out.println("New client processed: " + myClientData.ClientNickname + " in room " + clientDataRoomName + " with IP: " + myClientData.ClientID);
 
         // Create or update the room
         ManageRooms(clientDataRoomName, myClientData);
@@ -40,7 +40,7 @@ public class ServerThread extends Thread {
             ArrayList<ClientData> clientsInTheSameRoom = server.Rooms.get(clientDataRoomName);
             for (ClientData clientData : clientsInTheSameRoom) {
                 if(clientData.ClientSocket == clientSocket) continue;
-                SocketUtilities.WriteSocketData(clientData.ClientSocket, clientData.ClientNickname + ":" + clientDataNewMessage);
+                SocketUtilities.WriteSocketData(clientData.ClientSocket, clientDataNewMessage);
             }
 
         } while (!clientDataNewMessage.equals("END"));
