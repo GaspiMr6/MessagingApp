@@ -13,21 +13,40 @@ public class Client {
         String port = args[1];
 
         try (Socket clientSocket = new Socket(host, Integer.parseInt(port));
-             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));){
+                BufferedReader br = new BufferedReader(new InputStreamReader(System.in));) {
+            
+            System.out.println("Welcome to the MessaginApp!");
+
+            // Read input for Nickname
+            System.out.println("Which is your nickname?");
+            String nickname = br.readLine();
+            // Send Nickname to server
+            SocketUtilities.WriteSocketData(clientSocket, nickname);
 
             // Read input for Room Name
             System.out.print("Specify the room name you want to join/create to talk with others: ");
-            String input = br.readLine();
+            String roomName = br.readLine();
             // Send RoomName to server
-            SocketUtilities.WriteSocketData(clientSocket, input);
+            SocketUtilities.WriteSocketData(clientSocket, roomName);
+            
             // Wait for a response from the server
             String response = SocketUtilities.ReadSocketData(clientSocket);
 
-            System.out.println(response);
+            // Listen to the incoming room messages (starting a new thread)
+            System.out.println("You have joined to " + response);
+            Thread incomingRoomMessagesThread = new ClientThread(clientSocket);
+            incomingRoomMessagesThread.start();
 
+            System.out.println("Say whatever to the others. Type \"END\" to exit");
+            String input;
+            do {
+                input = br.readLine();
+                SocketUtilities.WriteSocketData(clientSocket, input);
+            } while (!input.equals("END"));
 
         } catch (Exception e) {
-            System.out.println("Exception caught: " + e.getMessage() + "\nStackTrace: " + e.getStackTrace() + " " + e.getCause());
+            System.out.println(
+                    "Exception caught: " + e.getMessage() + "\nStackTrace: " + e.getStackTrace() + " " + e.getCause());
         }
         System.out.println("I exit");
 

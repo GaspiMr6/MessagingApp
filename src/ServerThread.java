@@ -7,6 +7,7 @@ public class ServerThread extends Thread {
     
     public Socket clientSocket;
     public Server server;
+    public ClientData clientData;
 
     ServerThread(Server serverReceived, Socket clientSocketReceived){
         server = serverReceived;
@@ -15,16 +16,35 @@ public class ServerThread extends Thread {
 
     public void run(){
 
+        // Read the Nickname from client
+        String clientNickname = SocketUtilities.ReadSocketData(clientSocket);
         // Read the Room Name from client
         String clientDataRoomName = SocketUtilities.ReadSocketData(clientSocket);
-        System.out.println("I've received " + clientDataRoomName + " roomname from the client " + clientSocket.getRemoteSocketAddress());
-        
+        // New client data
+        ClientData myClientData = new ClientData(clientSocket.getRemoteSocketAddress(), clientSocket, clientNickname);
+        System.out.println("New client processed: " + clientNickname + " in room "+ clientDataRoomName + " with IP: " + clientSocket.getRemoteSocketAddress());
+
         // Create or update the room
-        ManageRooms(clientDataRoomName);
+        ManageRooms(clientDataRoomName, myClientData);
         
         // Send a response to the client with the current State of the Room.
         SocketUtilities.WriteSocketData(clientSocket, GetRoomState(clientDataRoomName));
 
+        // Chat starts
+        String clientDataNewMessage;
+        do {
+            // Get new message from the client
+            clientDataNewMessage = SocketUtilities.ReadSocketData(clientSocket);
+
+            // Send it to all other clients in the same room
+            ArrayList<ClientData> clientsInTheSameRoom = server.Rooms.get(clientDataRoomName);
+            for (ClientData clientData : clientsInTheSameRoom) {
+                if(clientData.ClientSocket == clientSocket) continue;
+                SocketUtilities.WriteSocketData(clientData.ClientSocket, clientData.ClientNickname + ":" + clientDataNewMessage);
+            }
+
+        } while (!clientDataNewMessage.equals("END"));
+        
 
         // Close Socket
 		try {
@@ -35,14 +55,13 @@ public class ServerThread extends Thread {
         }
     }
 
-    private void ManageRooms(String clientDataRoomName){
+    private void ManageRooms(String clientRoomName, ClientData clientData){
 
-        if(server.Rooms.containsKey(clientDataRoomName)){
-            server.Rooms.get(clientDataRoomName).add( new ClientData(clientSocket.getRemoteSocketAddress(), clientSocket));
+        if(server.Rooms.containsKey(clientRoomName)){
+            server.Rooms.get(clientRoomName).add( clientData);
         }
         else {
-            ClientData clientData = new ClientData(clientSocket.getRemoteSocketAddress(), clientSocket);
-            server.Rooms.put(clientDataRoomName, new ArrayList<ClientData>(){{ add(clientData); }});
+            server.Rooms.put(clientRoomName, new ArrayList<ClientData>(){{ add(clientData); }});
         }
         ShowRoomsState();
     }
@@ -59,7 +78,7 @@ public class ServerThread extends Thread {
             ArrayList<ClientData> clientsData = server.Rooms.get(roomID);
             state += "Room " + roomID + ": there are " + clientsData.size() + " clients ->";
             for (ClientData client : clientsData) {
-                state += " " + client.ClientID;
+                state += " " + client.ClientNickname;
             }
         }
         else {
