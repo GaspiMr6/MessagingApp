@@ -14,9 +14,11 @@ public class SocketUtilities {
             InputStream inputStream = socket.getInputStream();
 			DataInputStream dataInStream = new DataInputStream(inputStream);
 			return dataInStream.readUTF();
-		} catch (IOException e) {
-			System.out.println("Error Reading: " + e + " " + e.getMessage() + " " + e.getCause());
+        } catch (IOException e) {
+            if (!Thread.currentThread().isInterrupted())
+			    System.out.println("Error Reading: " + e + " " + e.getMessage() + " " + e.getCause());
 		}
+        
 		return "";
 	}
 
@@ -26,7 +28,8 @@ public class SocketUtilities {
             DataOutputStream dataOutStream = new DataOutputStream(outStream);
             dataOutStream.writeUTF(data);
         } catch (Exception e) {
-            System.out.println("Error Writing: " + e.getMessage() + e.getStackTrace().toString() + " " + e.getCause());
+            if (!Thread.currentThread().isInterrupted())
+                System.out.println("Error Writing: " + e.getMessage() + e.getStackTrace().toString() + " " + e.getCause());
         }
     }
 

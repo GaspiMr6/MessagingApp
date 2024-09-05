@@ -11,9 +11,22 @@ public class ClientThread extends Thread {
     public void run (){
 
         String response;
-        do {
-             response = SocketUtilities.ReadSocketData(clientSocket);
-            System.out.println(response);
-        } while (!response.equals("END"));
+        try {
+            while (!Thread.currentThread().isInterrupted()) {
+                response = SocketUtilities.ReadSocketData(clientSocket);
+                switch (response) {
+                    case "SERVER_SHUTDOWN":
+                        System.out.println("The server has been shutdown");
+                        System.exit(0);
+                        break;
+                    default:
+                        System.out.println(response);
+                        break;
+                }
+
+            }
+        } catch (Exception e){
+            System.out.println("Client Thread Exception: " + e.getMessage());
+        }
     }
 }
