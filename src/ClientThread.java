@@ -1,5 +1,6 @@
 import java.net.Socket;
 
+// ClientThread is used to be listening to other clients messages 
 public class ClientThread extends Thread {
 
     Socket clientSocket;
@@ -10,23 +11,16 @@ public class ClientThread extends Thread {
 
     public void run (){
 
-        String response;
         try {
             while (!Thread.currentThread().isInterrupted()) {
-                response = SocketUtilities.ReadSocketData(clientSocket);
-                switch (response) {
-                    case "SERVER_SHUTDOWN":
-                        System.out.println("The server has been shutdown");
-                        System.exit(0);
-                        break;
-                    default:
-                        System.out.println(response);
-                        break;
-                }
-
+                SocketUtilities.Message newMsg = SocketUtilities.ReadSocketData(clientSocket);
+                String newMsgData = Client.ProcessMessage(newMsg);
+                System.out.println(newMsgData);
             }
         } catch (Exception e){
-            System.out.println("Client Thread Exception: " + e.getMessage());
+            System.out.println("Client Thread Exception: " + e.getCause() + " and " + e.getLocalizedMessage());
         }
+        System.out.println("I finish");
+
     }
 }

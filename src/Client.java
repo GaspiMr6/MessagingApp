@@ -7,26 +7,48 @@ public class Client {
 
     private static String host;
     private static String port;
+    private static Thread incomingRoomMessagesThread;
 
+    private static Socket clientSocket;
+    private static BufferedReader br;
     public static void main(String[] args) {
 
         CheckArguments(args);
         
-        try (Socket clientSocket = new Socket(host, Integer.parseInt(port));
-                BufferedReader br = new BufferedReader(new InputStreamReader(System.in));) {     
+        try {
+            clientSocket = new Socket(host, Integer.parseInt(port));
+            br = new BufferedReader(new InputStreamReader(System.in));       
             System.out.println("Welcome to the MessaginApp!");
             AddShutdownHook(clientSocket);
             String nickname = AskForNicknameInput(br, clientSocket);  // Send NICKNAME to server
             AskForReadRoomNameInput(br, clientSocket);  // Send ROOMNAME to server
             ReceiveRoomStatus(clientSocket); // Wait for a response from the server and print it
-            Thread incomingRoomMessagesThread = ListenToIncomingMessages(clientSocket); // Starts a new thread 
+            incomingRoomMessagesThread = ListenToIncomingMessages(clientSocket); // Starts a new thread 
             StartMainLoopInput(incomingRoomMessagesThread, br, clientSocket, nickname); // Ask for input messages
 
-        } catch (Exception e) {
-            System.out.println(
-                    "Exception caught: " + e.getMessage() + "\nStackTrace: " + e.getStackTrace() + " " + e.getCause());
+        } 
+        catch (Exception e) {
+            System.out.println( "Exception caught: " + e.getMessage() + "\nStackTrace: " + e.getStackTrace() + " " + e.getCause());
         }
         System.out.println("I exit");
+    }
+
+    public static String ProcessMessage(SocketUtilities.Message msg){
+        switch (msg.messageHeader) {
+            case SERVER_DATA:
+                return msg.data;
+
+            case SERVER_DISCONNECTED:
+                System.out.println("Server disconnected!");
+                incomingRoomMessagesThread.interrupt();
+                System.exit(0);
+                break;
+
+            default:
+                System.out.println("Error processing Message! Header not implemented!");
+                break;
+        }
+        return null;
     }
 
     private static void CheckArguments(String[] args){
@@ -43,7 +65,8 @@ public class Client {
         System.out.println("Which is your nickname?");
         String nickname = br.readLine();
         // Send Nickname to server
-        SocketUtilities.WriteSocketData(clientSocket, nickname);
+        SocketUtilities.WriteSocketData(clientSocket, new SocketUtilities.Message(SocketUtilities.EMessageHeader.CLIENT_DATA, nickname));
+
         return nickname;
     }
 
@@ -52,42 +75,47 @@ public class Client {
         System.out.print("Specify the room name you want to join/create to talk with others: ");
         String roomName = br.readLine();
         // Send RoomName to server
-        SocketUtilities.WriteSocketData(clientSocket, roomName);
+        SocketUtilities.WriteSocketData(clientSocket, new SocketUtilities.Message(SocketUtilities.EMessageHeader.CLIENT_DATA, roomName));
     }
 
     private static void ReceiveRoomStatus(Socket clientSocket){
-        
-        String response = SocketUtilities.ReadSocketData(clientSocket);
-        if(response.equals("SERVER_SHUTDOWN")) {
-            System.out.println("The server has been shutdown");
-            System.exit(0);
-        }
-        System.out.println("You have joined to " + response);
+        SocketUtilities.Message msgRoomStatus = SocketUtilities.ReadSocketData(clientSocket);
+        String roomStatus = ProcessMessage(msgRoomStatus);
+        System.out.println("You have joined to " + roomStatus);
     }
 
     private static Thread ListenToIncomingMessages(Socket clientSocket){
-        // Listen to the incoming room messages (starting a new thread)
-        
+        // Listen to the incoming room messages (starting a new thread)  
         Thread incomingRoomMessagesThread = new ClientThread(clientSocket);
         incomingRoomMessagesThread.start();
         return incomingRoomMessagesThread;
     }
 
     private static void StartMainLoopInput(Thread incomingRoomMessagesThread, BufferedReader br, Socket clientSocket, String nickname) throws IOException{
-        System.out.println("Say whatever to the others. Type \"END\" to exit");
+        System.out.println("Say whatever to the others. CTRL + C to exit");
         String input;
-        do {
+        while(true){
             input = br.readLine();
-            SocketUtilities.WriteSocketData(clientSocket, nickname + ":" + input);
-        } while (!input.equals("END"));
-        
-        incomingRoomMessagesThread.interrupt();
+            SocketUtilities.Message msg = new SocketUtilities.Message(SocketUtilities.EMessageHeader.CLIENT_DATA, nickname + ":" + input);
+            SocketUtilities.WriteSocketData(clientSocket, msg);
+        }
     }
 
-    private static void AddShutdownHook(Socket clienSocket){
+    private static void AddShutdownHook(Socket clientSocket){
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("Server is shutting down...");
-            SocketUtilities.WriteSocketData(clienSocket, "CLIENT_SHUTDOWN");
+            System.out.println("Client is shutting down...");
+            SocketUtilities.Message msg = new SocketUtilities.Message(SocketUtilities.EMessageHeader.CLIENT_DISCONNECTED, "CLIENT_SHUTDOWN");
+            SocketUtilities.WriteSocketData(clientSocket, msg);
+            CloseSocketAndBufferedLine();
         }));
 	}
+
+    static void CloseSocketAndBufferedLine(){
+		try {
+            clientSocket.close();
+            br.close();
+        } catch (IOException e) {
+            System.out.println(e.getMessage() + " --- " + e.getStackTrace());
+        }
+    }
 }

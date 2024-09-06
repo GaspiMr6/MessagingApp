@@ -58,7 +58,10 @@ public class Server {
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Server is shutting down...");
 			for(Socket socket : sockets){
-				SocketUtilities.WriteSocketData(socket, "SERVER_SHUTDOWN");
+				if(!socket.isClosed()){
+					SocketUtilities.Message msgDisconnect = new SocketUtilities.Message(SocketUtilities.EMessageHeader.SERVER_DISCONNECTED, "SERVER_DISCONNECTED");
+					SocketUtilities.WriteSocketData(socket, msgDisconnect);
+				}
 			}
         }));
 	}

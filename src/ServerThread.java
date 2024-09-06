@@ -3,8 +3,8 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Map;
 
+
 public class ServerThread extends Thread {
-    
     public Socket clientSocket;
     public Server server;
     public ClientData clientData;
@@ -18,54 +18,53 @@ public class ServerThread extends Thread {
 
     public void run(){
 
-        ClientData clientData = AskForClientData();
-        if(clientData != null) {
-            ManageRooms(clientDataRoomName, clientData);  // Create or update the room
-        
-            WriteDataRoomState(clientDataRoomName);  // Send a response to the client with the current State of the Room.
+        try {
+            ClientData clientData = AskForClientData();
+            if(clientData != null) {
+                ManageRooms(clientData);  // Create or update the room
+            
+                WriteDataRoomState();  // Send a response to the client with the current State of the Room.
 
-            StartChat(clientDataRoomName);  // Main loop of the thread (it reads data from the client)
+                StartChat();  // Main loop of the thread (it reads data from the client)
+            }
+        } catch (ClientDisconnectsException e){
+            System.out.println("Client Disconnects Exception! Closing Socket " + clientSocket.getRemoteSocketAddress() + "...");
         }
         CloseSocket();
 
     }
 
-    private void StartChat(String clientDataRoomName){
-        // Chat starts
-        String clientDataNewMessage = "";
+    private String ProcessMessage(SocketUtilities.Message msg){
 
-        while(true) {
+        if(msg == null || msg.messageHeader == null) { ClientDisconnects(); };
 
-            // Get new message from the client
-            clientDataNewMessage = SocketUtilities.ReadSocketData(clientSocket);
+        switch (msg.messageHeader) {
+            case CLIENT_DATA:
+                return msg.data;
 
-            System.out.println("Message received: " + clientDataNewMessage);
-
-            // Check if app must finish
-            if (clientDataNewMessage.endsWith("END") || clientDataNewMessage.equals("CLIENT_SHUTDOWN")){
+            case CLIENT_DISCONNECTED:
+                ClientDisconnects();
                 break;
-            }
 
-            // Send it to all other clients in the same room
-            ArrayList<ClientData> clientsInTheSameRoom = server.Rooms.get(clientDataRoomName);
-            for (ClientData iclientData : clientsInTheSameRoom) {
-                if(iclientData.ClientSocket == clientSocket) continue;
-                SocketUtilities.WriteSocketData(iclientData.ClientSocket, clientDataNewMessage);
-            }
+            default:
+                System.out.println("Error processing Message! Header not implemented!");
+                break;
         }
+        return null;
     }
 
+    private void ClientDisconnects(){
+        throw new ClientDisconnectsException("Client " + clientSocket.getRemoteSocketAddress() + " has disconnected");
+    }
 
     private ClientData AskForClientData(){
         // Read the Nickname from client
-        String clientNickname = SocketUtilities.ReadSocketData(clientSocket);
+        SocketUtilities.Message msgClientNickname = SocketUtilities.ReadSocketData(clientSocket);
+        String clientNickname = ProcessMessage(msgClientNickname);
+
         // Read the Room Name from client
-        clientDataRoomName = SocketUtilities.ReadSocketData(clientSocket);
-        if(clientNickname.equals("CLIENT_SHUTDOWN") || clientDataRoomName.equals("CLIENT_SHUTDOWN")){
-            System.out.println("Client disconnected " + clientSocket.getRemoteSocketAddress());
-            Thread.currentThread().interrupt();
-            return null;
-        } 
+        SocketUtilities.Message msgClientDataRoomName = SocketUtilities.ReadSocketData(clientSocket);
+        clientDataRoomName = ProcessMessage(msgClientDataRoomName);
 
         // New client data
         ClientData myClientData = new ClientData(clientSocket.getRemoteSocketAddress(), clientSocket, clientNickname);
@@ -73,25 +72,26 @@ public class ServerThread extends Thread {
         return myClientData;
     }
 
-    private void ManageRooms(String clientRoomName, ClientData clientData){
+    private void ManageRooms(ClientData clientData){
 
-        if(server.Rooms.containsKey(clientRoomName)){
-            server.Rooms.get(clientRoomName).add( clientData);
+        if(server.Rooms.containsKey(clientDataRoomName)){
+            server.Rooms.get(clientDataRoomName).add( clientData);
         }
         else {
-            server.Rooms.put(clientRoomName, new ArrayList<ClientData>(){{ add(clientData); }});
+            server.Rooms.put(clientDataRoomName, new ArrayList<ClientData>(){{ add(clientData); }});
         }
         ShowRoomsState();
     }
-
-    private void WriteDataRoomState(String clientDataRoomName){
-        SocketUtilities.WriteSocketData(clientSocket, GetRoomState(clientDataRoomName));
-    }
-
     private void ShowRoomsState(){
         for (Map.Entry<String, ArrayList<ClientData>> room : server.Rooms.entrySet()) {
             System.out.println( GetRoomState(room.getKey()) );
         }
+    }
+
+
+    private void WriteDataRoomState(){
+        String roomState = GetRoomState(clientDataRoomName);
+        SocketUtilities.WriteSocketData(clientSocket, new SocketUtilities.Message(SocketUtilities.EMessageHeader.SERVER_DATA, roomState));
     }
 
     String GetRoomState(String roomID){
@@ -109,13 +109,32 @@ public class ServerThread extends Thread {
         return state;
     }
 
+
+    private void StartChat(){
+        // Chat starts
+
+        while(true) {
+            // Get new message from the client
+            SocketUtilities.Message newMsgClient = SocketUtilities.ReadSocketData(clientSocket);
+            String newData = ProcessMessage(newMsgClient);
+            System.out.println("Message received: " + newData);
+
+            // Send it to all other clients in the same room
+            ArrayList<ClientData> clientsInTheSameRoom = server.Rooms.get(clientDataRoomName);
+            for (ClientData iclientData : clientsInTheSameRoom) {
+                if(iclientData.ClientSocket == clientSocket) continue;
+                SocketUtilities.Message newMessage = new SocketUtilities.Message(SocketUtilities.EMessageHeader.SERVER_DATA, newData);
+                SocketUtilities.WriteSocketData(iclientData.ClientSocket, newMessage);
+            }
+        }
+    }
+
+
     void CloseSocket(){
 		try {
-            System.out.println("I close the socket");
             clientSocket.close();
         } catch (IOException e) {
             System.out.println(e.getMessage() + " --- " + e.getStackTrace());
         }
-        
     }
 }
