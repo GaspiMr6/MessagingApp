@@ -8,16 +8,15 @@ public class Client {
     private static String host;
     private static String port;
     private static Thread incomingRoomMessagesThread;
-
     private static Socket clientSocket;
-    private static BufferedReader br;
+    
     public static void main(String[] args) {
 
         CheckArguments(args);
         
-        try {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in)); ) {
             clientSocket = new Socket(host, Integer.parseInt(port));
-            br = new BufferedReader(new InputStreamReader(System.in));       
+            //br = new BufferedReader(new InputStreamReader(System.in));       
             System.out.println("Welcome to the MessaginApp!");
             AddShutdownHook(clientSocket);
             String nickname = AskForNicknameInput(br, clientSocket);  // Send NICKNAME to server
@@ -30,7 +29,6 @@ public class Client {
         catch (Exception e) {
             System.out.println( "Exception caught: " + e.getMessage() + "\nStackTrace: " + e.getStackTrace() + " " + e.getCause());
         }
-        System.out.println("I exit");
     }
 
     public static String ProcessMessage(SocketUtilities.Message msg){
@@ -113,7 +111,6 @@ public class Client {
     static void CloseSocketAndBufferedLine(){
 		try {
             clientSocket.close();
-            br.close();
         } catch (IOException e) {
             System.out.println(e.getMessage() + " --- " + e.getStackTrace());
         }

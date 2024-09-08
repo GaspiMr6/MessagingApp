@@ -8,17 +8,16 @@ import java.util.Map;
 
 public class Server {
 
-	// TO DO: Syncronize
 	public Map<String, ArrayList<ClientData>> Rooms = new HashMap<String, ArrayList<ClientData>>();
-	public ArrayList<Socket> sockets = new ArrayList<>();
+
+	private ArrayList<Socket> sockets = new ArrayList<>();
 
 	public static void main(String[] args) {
 
 		CheckArguments(args);
 		Server server = new Server();
 		int port = GetListeningPort(args);
-		server.AddShutdownHook();
-		server.ListenToClients(port);	
+		server.ListenToClients(port);
 	}
 
 	private void ListenToClients(int port){
@@ -52,17 +51,5 @@ public class Server {
 		int port = Integer.parseInt(args[0]);
 		System.out.println("Listening on port " + port);
 		return port;
-	}
-
-	private void AddShutdownHook(){
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("Server is shutting down...");
-			for(Socket socket : sockets){
-				if(!socket.isClosed()){
-					SocketUtilities.Message msgDisconnect = new SocketUtilities.Message(SocketUtilities.EMessageHeader.SERVER_DISCONNECTED, "SERVER_DISCONNECTED");
-					SocketUtilities.WriteSocketData(socket, msgDisconnect);
-				}
-			}
-        }));
 	}
 }

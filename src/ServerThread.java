@@ -5,10 +5,10 @@ import java.util.Map;
 
 
 public class ServerThread extends Thread {
-    public Socket clientSocket;
-    public Server server;
-    public ClientData clientData;
 
+    private Socket clientSocket;
+    private Server server;
+    private ClientData clientData;
     private String clientDataRoomName;
 
     ServerThread(Server serverReceived, Socket clientSocketReceived){
@@ -19,7 +19,7 @@ public class ServerThread extends Thread {
     public void run(){
 
         try {
-            ClientData clientData = AskForClientData();
+            AskForClientData();
             if(clientData != null) {
                 ManageRooms(clientData);  // Create or update the room
             
@@ -29,6 +29,7 @@ public class ServerThread extends Thread {
             }
         } catch (ClientDisconnectsException e){
             System.out.println("Client Disconnects Exception! Closing Socket " + clientSocket.getRemoteSocketAddress() + "...");
+            ShowRoomsState();
         }
         CloseSocket();
 
@@ -53,11 +54,15 @@ public class ServerThread extends Thread {
         return null;
     }
 
-    private void ClientDisconnects(){
+    private synchronized void ClientDisconnects(){
+        server.Rooms.get(clientDataRoomName).remove(clientData);
+        if(server.Rooms.get(clientDataRoomName).size() == 0){
+            server.Rooms.remove(clientDataRoomName);
+        }
         throw new ClientDisconnectsException("Client " + clientSocket.getRemoteSocketAddress() + " has disconnected");
     }
 
-    private ClientData AskForClientData(){
+    private void AskForClientData(){
         // Read the Nickname from client
         SocketUtilities.Message msgClientNickname = SocketUtilities.ReadSocketData(clientSocket);
         String clientNickname = ProcessMessage(msgClientNickname);
@@ -67,12 +72,11 @@ public class ServerThread extends Thread {
         clientDataRoomName = ProcessMessage(msgClientDataRoomName);
 
         // New client data
-        ClientData myClientData = new ClientData(clientSocket.getRemoteSocketAddress(), clientSocket, clientNickname);
-        System.out.println("New client processed: " + myClientData.ClientNickname + " in room " + clientDataRoomName + " with IP: " + myClientData.ClientID);
-        return myClientData;
+        clientData = new ClientData(clientSocket.getRemoteSocketAddress(), clientSocket, clientNickname);
+        System.out.println("New client processed: " + clientData.ClientNickname + " in room " + clientDataRoomName + " with IP: " + clientData.ClientID);
     }
 
-    private void ManageRooms(ClientData clientData){
+    private synchronized void ManageRooms(ClientData clientData){
 
         if(server.Rooms.containsKey(clientDataRoomName)){
             server.Rooms.get(clientDataRoomName).add( clientData);
@@ -82,7 +86,7 @@ public class ServerThread extends Thread {
         }
         ShowRoomsState();
     }
-    private void ShowRoomsState(){
+    private synchronized void ShowRoomsState(){
         for (Map.Entry<String, ArrayList<ClientData>> room : server.Rooms.entrySet()) {
             System.out.println( GetRoomState(room.getKey()) );
         }
@@ -94,7 +98,7 @@ public class ServerThread extends Thread {
         SocketUtilities.WriteSocketData(clientSocket, new SocketUtilities.Message(SocketUtilities.EMessageHeader.SERVER_DATA, roomState));
     }
 
-    String GetRoomState(String roomID){
+    private String GetRoomState(String roomID){
         String state = "";
         if(server.Rooms.containsKey(roomID)){
             ArrayList<ClientData> clientsData = server.Rooms.get(roomID);
@@ -130,7 +134,7 @@ public class ServerThread extends Thread {
     }
 
 
-    void CloseSocket(){
+    private void CloseSocket(){
 		try {
             clientSocket.close();
         } catch (IOException e) {

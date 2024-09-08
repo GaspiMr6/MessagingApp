@@ -13,8 +13,6 @@ public class SocketUtilities {
 
         SERVER_DATA,
         SERVER_DISCONNECTED,
-
-        SOCKET_CLOSED
     }
 
     public static class Message {

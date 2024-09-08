@@ -20,7 +20,5 @@ public class ClientThread extends Thread {
         } catch (Exception e){
             System.out.println("Client Thread Exception: " + e.getCause() + " and " + e.getLocalizedMessage());
         }
-        System.out.println("I finish");
-
     }
 }
